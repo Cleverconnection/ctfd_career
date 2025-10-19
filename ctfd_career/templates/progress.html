@@ -1,0 +1,26 @@
+{% extends "page.html" %}
+
+{% block styles %}
+{{ super() }}
+<link rel="stylesheet" href="{{ url_for('career.static', filename='css/career.css') }}" />
+{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+  <div class="row mb-4">
+    <div class="col-12">
+      <h1 class="display-6">{{ translations.get('Career', 'Career') }}</h1>
+      <p class="text-muted">{{ translations.get('Progress', 'Progress') }}</p>
+    </div>
+  </div>
+  <div id="career-root" class="col-12"></div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script>
+  window.CTFDCareerTranslations = {{ translations | tojson | safe }};
+</script>
+<script src="{{ url_for('career.static', filename='js/progress.js') }}" defer></script>
+{% endblock %}

@@ -1,0 +1,47 @@
+#career-root .career-card {
+  border-radius: 12px;
+}
+
+#career-root .career-icon {
+  width: 48px;
+  height: 48px;
+  object-fit: contain;
+}
+
+#career-root .career-progress {
+  height: 1.5rem;
+  border-radius: 999px;
+  margin-bottom: 1rem;
+}
+
+#career-root .progress-bar {
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(90deg, rgba(13, 110, 253, 1) 0%, rgba(111, 66, 193, 1) 100%);
+}
+
+.career-theme-technology {
+  --career-color: #0d6efd;
+}
+
+.career-theme-women {
+  --career-color: #6f42c1;
+}
+
+.career-theme-security {
+  --career-color: #dc3545;
+}
+
+#career-root .career-card.career-theme-technology {
+  border-top-color: var(--career-color);
+}
+
+#career-root .career-card.career-theme-women {
+  border-top-color: var(--career-color);
+}
+
+#career-root .career-card.career-theme-security {
+  border-top-color: var(--career-color);
+}

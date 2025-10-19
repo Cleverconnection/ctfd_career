@@ -1,0 +1,112 @@
+{% extends "admin/base.html" %}
+
+{% block styles %}
+{{ super() }}
+<link rel="stylesheet" href="{{ url_for('career.static', filename='css/career.css') }}" />
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+  <div class="row g-4">
+    <div class="col-lg-4">
+      <div class="card shadow-sm">
+        <div class="card-header">
+          <h5 class="mb-0">{{ translations.get('Add Career', 'Add Career') }}</h5>
+        </div>
+        <div class="card-body">
+          <form id="career-form" class="vstack gap-3">
+            <div>
+              <label class="form-label" for="career-name">{{ translations.get('Career', 'Career') }}</label>
+              <input type="text" id="career-name" name="name" class="form-control" required />
+            </div>
+            <div>
+              <label class="form-label" for="career-description">{{ translations.get('Description', 'Description') }}</label>
+              <textarea id="career-description" name="description" class="form-control" rows="3"></textarea>
+            </div>
+            <div>
+              <label class="form-label" for="career-icon">{{ translations.get('Icon URL', 'Icon URL') }}</label>
+              <input type="text" id="career-icon" name="icon" class="form-control" placeholder="/plugins/ctfd_career/static/img/icons/tech.svg" />
+            </div>
+            <div>
+              <label class="form-label" for="career-color">{{ translations.get('Color', 'Color') }}</label>
+              <input type="text" id="career-color" name="color" class="form-control" placeholder="#0d6efd" />
+            </div>
+            <div class="text-end">
+              <button type="submit" class="btn btn-primary">{{ translations.get('Add Career', 'Add Career') }}</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+    <div class="col-lg-4">
+      <div class="card shadow-sm">
+        <div class="card-header">
+          <h5 class="mb-0">{{ translations.get('Add Step', 'Add Step') }}</h5>
+        </div>
+        <div class="card-body">
+          <form id="step-form" class="vstack gap-3">
+            <div>
+              <label class="form-label" for="step-career-id">{{ translations.get('Career', 'Career') }}</label>
+              <select id="step-career-id" name="career_id" class="form-select" required></select>
+            </div>
+            <div>
+              <label class="form-label" for="step-name">{{ translations.get('Step', 'Step') }}</label>
+              <input type="text" id="step-name" name="name" class="form-control" required />
+            </div>
+            <div>
+              <label class="form-label" for="step-description">{{ translations.get('Description', 'Description') }}</label>
+              <textarea id="step-description" name="description" class="form-control" rows="3"></textarea>
+            </div>
+            <div>
+              <label class="form-label" for="step-category">{{ translations.get('Category', 'Category') }}</label>
+              <input type="text" id="step-category" name="category" class="form-control" placeholder="Web" />
+            </div>
+            <div>
+              <label class="form-label" for="step-required-solves">{{ translations.get('Required Solves', 'Required Solves') }}</label>
+              <input type="number" min="0" id="step-required-solves" name="required_solves" class="form-control" value="1" />
+            </div>
+            <div class="text-end">
+              <button type="submit" class="btn btn-success">{{ translations.get('Add Step', 'Add Step') }}</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+    <div class="col-lg-4">
+      <div class="card shadow-sm">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <h5 class="mb-0">{{ translations.get('Progress', 'Progress') }}</h5>
+          <button id="career-sync-button" class="btn btn-outline-primary btn-sm">{{ translations.get('Recalculate Progress', 'Recalculate Progress') }}</button>
+        </div>
+        <div class="card-body p-0">
+          <div id="career-summary" class="table-responsive">
+            <table class="table table-striped mb-0">
+              <thead>
+                <tr>
+                  <th>{{ translations.get('Career', 'Career') }}</th>
+                  <th>{{ translations.get('Completed', 'Completed') }}</th>
+                  <th>{{ translations.get('Steps', 'Steps') }}</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="row mt-4">
+    <div class="col-12">
+      <div id="career-admin-list" class="vstack gap-3"></div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script>
+  window.CTFDCareerTranslations = {{ translations | tojson | safe }};
+</script>
+<script src="{{ url_for('career.static', filename='js/admin.js') }}" defer></script>
+{% endblock %}
