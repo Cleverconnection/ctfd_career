@@ -1,5 +1,18 @@
 from flask import Blueprint
 from CTFd.models import db
+from CTFd.plugins import register_plugin_assets_directory
+
+try:  # pragma: no cover - compatibility shim
+    from CTFd.plugins import register_admin_menu_bar
+except ImportError:  # pragma: no cover - compatibility shim
+    register_admin_menu_bar = None
+    try:
+        from CTFd.plugins import register_admin_plugin_menu_bar as register_admin_menu_bar
+    except ImportError:  # pragma: no cover - compatibility shim
+        try:
+            from CTFd.plugins import register_admin_page_menu_bar as register_admin_menu_bar
+        except ImportError:  # pragma: no cover - compatibility shim
+            register_admin_menu_bar = None
 
 from . import models, routes
 
@@ -27,8 +40,9 @@ def load(app):
     routes.register_routes(blueprint)
     app.register_blueprint(blueprint, url_prefix="/plugins/career")
 
-    # Registro dos assets estáticos
-    from CTFd.plugins import register_plugin_assets_directory
+    # Registro do menu administrativo e assets estáticos
+    if register_admin_menu_bar:
+        register_admin_menu_bar("Carreiras", "/plugins/career/admin")
     register_plugin_assets_directory(app, base_path="/plugins/ctfd_career/static/")
 
     # Tentativa de rodar migração Alembic (fallback)
