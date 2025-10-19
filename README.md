@@ -109,4 +109,4 @@ pytest -q --disable-warnings
 
 ## Licença
 
-Distribuído sob a licença MIT (mesma licença do projeto original). Autoria CECyber / Equipe CTF-Platform.
+Distribuído sob a licença MIT (mesma licença do projeto original). forked from Bitbl4ck/ctfd_career Thank you!
