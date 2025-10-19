@@ -6,6 +6,14 @@
   const careerSelect = document.getElementById("step-career-id");
   const syncButton = document.getElementById("career-sync-button");
   const summaryContainer = document.getElementById("career-summary");
+  const careerIdInput = document.getElementById("career-id");
+  const careerCancelButton = document.getElementById("career-cancel");
+  const careerSubmitButton = careerForm
+    ? careerForm.querySelector("button[type='submit']")
+    : null;
+
+  let careersCache = [];
+  let editingCareerId = null;
 
   function t(key) {
     return translations[key] || key;
@@ -23,50 +31,142 @@
     setTimeout(() => alert.remove(), 4000);
   }
 
-  function renderCareers(careers) {
-    careerList.innerHTML = "";
-    careerSelect.innerHTML = "";
-
-    if (!careers.length) {
-      const placeholder = document.createElement("option");
-      placeholder.value = "";
-      placeholder.textContent = t("No careers available yet");
-      placeholder.disabled = true;
-      placeholder.selected = true;
-      careerSelect.appendChild(placeholder);
-
-      const empty = document.createElement("div");
-      empty.className = "alert alert-info";
-      empty.textContent = t("No careers available yet");
-      careerList.appendChild(empty);
+  function resetCareerForm() {
+    if (!careerForm) {
       return;
     }
 
-    careers.forEach((career) => {
-      const option = document.createElement("option");
-      option.value = career.id;
-      option.textContent = career.name;
-      careerSelect.appendChild(option);
+    careerForm.reset();
+    editingCareerId = null;
 
-      const item = document.createElement("div");
-      item.className = "card mb-3";
+    if (careerIdInput) {
+      careerIdInput.value = "";
+    }
 
-      const header = document.createElement("div");
-      header.className = "card-header d-flex justify-content-between align-items-center";
-      header.innerHTML = `<span class="fw-semibold">${career.name}</span>`;
+    if (careerSubmitButton) {
+      careerSubmitButton.textContent = t("Add Career");
+    }
 
-      const body = document.createElement("div");
-      body.className = "card-body";
-      body.innerHTML = `
-        <p class="mb-1"><strong>${t("Description")}:</strong> ${
-          career.description || "-"
-        }</p>
-        <p class="mb-0"><strong>${t("Steps")}:</strong> ${career.total_steps}</p>
-      `;
+    if (careerCancelButton) {
+      careerCancelButton.classList.add("d-none");
+    }
+  }
 
-      item.appendChild(header);
-      item.appendChild(body);
-      careerList.appendChild(item);
+  function populateCareerForm(career) {
+    if (!careerForm) {
+      return;
+    }
+
+    editingCareerId = Number(career.id);
+
+    if (careerIdInput) {
+      careerIdInput.value = career.id;
+    }
+
+    const nameInput = careerForm.querySelector("#career-name");
+    const descriptionInput = careerForm.querySelector("#career-description");
+    const iconInput = careerForm.querySelector("#career-icon");
+    const colorInput = careerForm.querySelector("#career-color");
+
+    if (nameInput) {
+      nameInput.value = career.name || "";
+    }
+    if (descriptionInput) {
+      descriptionInput.value = career.description || "";
+    }
+    if (iconInput) {
+      iconInput.value = career.icon || "";
+    }
+    if (colorInput) {
+      colorInput.value = career.color || "";
+    }
+
+    if (careerSubmitButton) {
+      careerSubmitButton.textContent = t("Update Career");
+    }
+
+    if (careerCancelButton) {
+      careerCancelButton.classList.remove("d-none");
+    }
+
+    careerForm.scrollIntoView({ behavior: "smooth", block: "center" });
+  }
+
+  function renderCareers(careers) {
+    careersCache = Array.isArray(careers) ? careers : [];
+
+    if (careerList) {
+      careerList.innerHTML = "";
+    }
+
+    const selectedCareerId = careerSelect ? careerSelect.value : "";
+
+    if (careerSelect) {
+      careerSelect.innerHTML = "";
+    }
+
+    if (!careersCache.length) {
+      if (careerSelect) {
+        const placeholder = document.createElement("option");
+        placeholder.value = "";
+        placeholder.textContent = t("No careers available yet");
+        placeholder.disabled = true;
+        placeholder.selected = true;
+        careerSelect.appendChild(placeholder);
+      }
+
+      if (careerList) {
+        const empty = document.createElement("div");
+        empty.className = "alert alert-info";
+        empty.textContent = t("No careers available yet");
+        careerList.appendChild(empty);
+      }
+
+      return;
+    }
+
+    careersCache.forEach((career) => {
+      if (careerSelect) {
+        const option = document.createElement("option");
+        option.value = career.id;
+        option.textContent = career.name;
+        if (String(career.id) === selectedCareerId) {
+          option.selected = true;
+        }
+        careerSelect.appendChild(option);
+      }
+
+      if (careerList) {
+        const item = document.createElement("div");
+        item.className = "card mb-3";
+
+        const header = document.createElement("div");
+        header.className = "card-header d-flex justify-content-between align-items-center";
+        header.innerHTML = `
+          <span class="fw-semibold">${career.name}</span>
+          <div class="btn-group btn-group-sm" role="group">
+            <button type="button" class="btn btn-primary" data-action="edit" data-id="${career.id}">${t(
+              "Edit"
+            )}</button>
+            <button type="button" class="btn btn-danger" data-action="delete" data-id="${career.id}">${t(
+              "Delete"
+            )}</button>
+          </div>
+        `;
+
+        const body = document.createElement("div");
+        body.className = "card-body";
+        body.innerHTML = `
+          <p class="mb-1"><strong>${t("Description")}:</strong> ${
+            career.description || "-"
+          }</p>
+          <p class="mb-0"><strong>${t("Steps")}:</strong> ${career.total_steps}</p>
+        `;
+
+        item.appendChild(header);
+        item.appendChild(body);
+        careerList.appendChild(item);
+      }
     });
   }
 
@@ -115,13 +215,29 @@
   }
 
   if (careerForm) {
+    resetCareerForm();
+
+    if (careerCancelButton) {
+      careerCancelButton.addEventListener("click", (event) => {
+        event.preventDefault();
+        resetCareerForm();
+      });
+    }
+
     careerForm.addEventListener("submit", (event) => {
       event.preventDefault();
       const formData = new FormData(careerForm);
       const payload = Object.fromEntries(formData.entries());
+      const isEditing = Boolean(editingCareerId);
+      delete payload.id;
 
-      fetch("/plugins/career/api/v1/career", {
-        method: "POST",
+      const url = isEditing
+        ? `/plugins/career/api/v1/career/${editingCareerId}`
+        : "/plugins/career/api/v1/career";
+      const method = isEditing ? "PUT" : "POST";
+
+      fetch(url, {
+        method,
         headers: { "Content-Type": "application/json" },
         credentials: "include",
         body: JSON.stringify(payload),
@@ -135,12 +251,68 @@
           return response.json();
         })
         .then(() => {
-          careerForm.reset();
+          resetCareerForm();
           loadCareers();
           loadSummary();
-          notify(t("Career created"));
+          notify(isEditing ? t("Career updated") : t("Career created"));
         })
         .catch((error) => notify(error.message, "danger"));
+    });
+  }
+
+  if (careerList) {
+    careerList.addEventListener("click", (event) => {
+      const target = event.target;
+
+      if (!(target instanceof HTMLElement)) {
+        return;
+      }
+
+      const { action, id } = target.dataset;
+
+      if (!action || !id) {
+        return;
+      }
+
+      if (action === "edit") {
+        const career = careersCache.find((entry) => String(entry.id) === id);
+        if (career) {
+          populateCareerForm(career);
+        }
+        return;
+      }
+
+      if (action === "delete") {
+        if (!window.confirm(t("Are you sure you want to delete this career?"))) {
+          return;
+        }
+
+        const numericId = Number(id);
+
+        fetch(`/plugins/career/api/v1/career/${id}`, {
+          method: "DELETE",
+          credentials: "include",
+        })
+          .then((response) => {
+            if (!response.ok) {
+              return response.json().then((data) => {
+                throw new Error(
+                  data.message || "Unable to delete career"
+                );
+              });
+            }
+            return response.json();
+          })
+          .then(() => {
+            if (editingCareerId === numericId) {
+              resetCareerForm();
+            }
+            loadCareers();
+            loadSummary();
+            notify(t("Career deleted"));
+          })
+          .catch((error) => notify(error.message, "danger"));
+      }
     });
   }
 

@@ -80,6 +80,30 @@ def register_routes(blueprint):
             HTTPStatus.CREATED,
         )
 
+    @blueprint.route("/api/v1/career/<int:career_id>", methods=["PUT"])
+    @admins_only
+    def update_career(career_id: int):
+        payload = request.get_json() or {}
+        career = Careers.query.get_or_404(career_id)
+
+        for key in ["name", "description", "icon", "color"]:
+            if key in payload:
+                setattr(career, key, payload[key] or None)
+
+        db.session.commit()
+        return jsonify({"success": True, "data": career.to_dict()})
+
+    @blueprint.route("/api/v1/career/<int:career_id>", methods=["DELETE"])
+    @admins_only
+    def delete_career(career_id: int):
+        career = Careers.query.get_or_404(career_id)
+
+        CareerSteps.query.filter_by(career_id=career.id).delete()
+        db.session.delete(career)
+        db.session.commit()
+
+        return jsonify({"success": True, "data": {"deleted": career_id}})
+
     @blueprint.route("/api/v1/career/steps/<int:career_id>", methods=["GET"])
     @authed_only
     def list_steps(career_id: int):
