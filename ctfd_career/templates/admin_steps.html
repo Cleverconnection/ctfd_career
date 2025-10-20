@@ -1,0 +1,44 @@
+{% extends "admin/base.html" %}
+
+{% block styles %}
+{{ super() }}
+<link rel="stylesheet" href="{{ url_for('career.static', filename='css/career.css') }}" />
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <h2 class="mb-0">{{ translations.get('Steps', 'Steps') }}</h2>
+    <a class="btn btn-outline-secondary" href="{{ url_for('career.admin_dashboard') }}">{{ translations.get('Back to Career Admin', 'Back to Career Admin') }}</a>
+  </div>
+  <div id="career-steps-status" class="mb-3"></div>
+  <div class="card shadow-sm">
+    <div class="card-body">
+      <div class="table-responsive">
+        <table class="table table-striped align-middle" id="career-steps-table">
+          <thead>
+            <tr>
+              <th scope="col">{{ translations.get('Step', 'Step') }}</th>
+              <th scope="col">{{ translations.get('Career', 'Career') }}</th>
+              <th scope="col">{{ translations.get('Category', 'Category') }}</th>
+              <th scope="col">{{ translations.get('Challenge', 'Challenge') }}</th>
+              <th scope="col">{{ translations.get('Required Solves', 'Required Solves') }}</th>
+              <th scope="col">{{ translations.get('Image', 'Image') }}</th>
+              <th scope="col">{{ translations.get('Actions', 'Actions') }}</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script>
+  window.CTFDCareerTranslations = {{ translations | tojson | safe }};
+</script>
+<script src="{{ url_for('career.static', filename='js/admin_steps.js') }}" defer></script>
+{% endblock %}

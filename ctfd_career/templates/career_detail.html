@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block styles %}
+{{ super() }}
+<link rel="stylesheet" href="{{ url_for('career.static', filename='css/career.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+  <div class="row">
+    <div class="col-lg-4">
+      <h2 class="text-primary mb-3">{{ career.name }}</h2>
+      <p>{{ career.description | safe }}</p>
+
+      {% for step in career.steps %}
+      <div class="card mb-3 shadow-sm">
+        <div class="card-body">
+          <h5 class="card-title">{{ step.name }}</h5>
+          <p class="card-text">{{ step.description | safe }}</p>
+
+          {% if step.image_url %}
+          <img src="{{ step.image_url }}" class="img-fluid rounded mb-2">
+          {% endif %}
+
+          {% if step.challenge_id %}
+          <div class="text-center mt-3">
+            <button
+              class="btn btn-outline-primary btn-sm"
+              onclick="carregarDesafio({{ step.challenge_id }}, '{{ step.name | e }}')"
+            >
+              {{ translations.get('Resolver desafio', 'Resolver desafio') }}
+            </button>
+          </div>
+
+          <!-- Área dinâmica de exibição -->
+          <div id="challenge-area-{{ step.challenge_id }}" class="mt-3 d-none"></div>
+          {% endif %}
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+
+    <div class="col-lg-8">
+      <div id="mensagem-inicial" class="alert alert-info">
+        {{ translations.get('Selecione um desafio à esquerda para resolvê-lo.', 'Selecione um desafio à esquerda para resolvê-lo.') }}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script>
+  window.CTFDCareerTranslations = {{ translations | tojson | safe }};
+</script>
+<script src="{{ url_for('career.static', filename='js/career_detail.js') }}" defer></script>
+{% endblock %}
