@@ -101,6 +101,7 @@ def test_step_creation(app_context):
         description="Complete introductory recon challenges",
         category="Recon",
         required_solves=2,
+        image_url="https://example.com/recon.png",
     )
     db.session.add(step)
     db.session.commit()
@@ -108,6 +109,7 @@ def test_step_creation(app_context):
     stored_step = CareerSteps.query.filter_by(name="Recon").first()
     assert stored_step is not None
     assert stored_step.required_solves == 2
+    assert stored_step.image_url == "https://example.com/recon.png"
 
 
 def test_progress_updates_with_solves(app_context):
@@ -206,6 +208,7 @@ def test_admin_manage_steps_with_challenge(app, app_context, admin_user):
                 "description": "Solve the initial API challenge",
                 "required_solves": 1,
                 "challenge_id": challenge_one.id,
+                "image_url": "https://example.com/step.png",
             },
         )
         assert create_response.status_code == 201
@@ -213,6 +216,7 @@ def test_admin_manage_steps_with_challenge(app, app_context, admin_user):
         assert create_payload["success"] is True
         step_id = create_payload["data"]["id"]
         assert create_payload["data"]["challenge_id"] == challenge_one.id
+        assert create_payload["data"]["image_url"] == "https://example.com/step.png"
 
         update_response = client.put(
             f"/plugins/career/api/v1/career/steps/{step_id}",
@@ -220,6 +224,7 @@ def test_admin_manage_steps_with_challenge(app, app_context, admin_user):
                 "name": "Updated API Step",
                 "challenge_id": challenge_two.id,
                 "required_solves": 1,
+                "image_url": "https://example.com/updated.png",
             },
         )
         assert update_response.status_code == 200
@@ -227,6 +232,7 @@ def test_admin_manage_steps_with_challenge(app, app_context, admin_user):
         assert update_payload["success"] is True
         assert update_payload["data"]["challenge_id"] == challenge_two.id
         assert update_payload["data"]["name"] == "Updated API Step"
+        assert update_payload["data"]["image_url"] == "https://example.com/updated.png"
 
         delete_response = client.delete(
             f"/plugins/career/api/v1/career/steps/{step_id}", json={}
@@ -295,3 +301,33 @@ def test_update_progress_requires_challenge_solve(app_context):
         item for item in career_entry_after["steps"] if item["step_id"] == step.id
     )
     assert step_entry_after["completed"] is True
+
+
+def test_career_detail_page(app, app_context, admin_user):
+    career = Careers(name="Detail Career", description="<strong>Shiny path</strong>")
+    db.session.add(career)
+    db.session.commit()
+
+    step = CareerSteps(
+        career_id=career.id,
+        name="Detail Step",
+        description="<em>Learn</em>",
+        required_solves=0,
+        image_url="https://example.com/detail.png",
+    )
+    db.session.add(step)
+    db.session.commit()
+
+    with app.test_client() as client:
+        with client.session_transaction() as sess:
+            sess["id"] = admin_user.id
+            sess["type"] = "admin"
+            sess["nonce"] = "test-nonce"
+            sess["hash"] = ctfd_hmac(admin_user.password)
+
+        response = client.get(f"/plugins/career/{career.id}")
+        assert response.status_code == 200
+        body = response.get_data(as_text=True)
+        assert "Detail Career" in body
+        assert "Detail Step" in body
+        assert "test-nonce" not in body  # ensure no nonce leakage

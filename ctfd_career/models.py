@@ -5,6 +5,8 @@ from typing import Dict, Iterable, Optional, Set
 
 from flask import current_app
 
+from sqlalchemy import inspect, text
+
 from CTFd.models import Challenges, Solves, Users, db
 
 
@@ -54,6 +56,7 @@ class CareerSteps(db.Model):
     category = db.Column(db.String(128), nullable=True)
     required_solves = db.Column(db.Integer, nullable=False, default=1)
     challenge_id = db.Column(db.Integer, db.ForeignKey("challenges.id"), nullable=True)
+    image_url = db.Column(db.String(512), nullable=True)
 
     career = db.relationship("Careers", back_populates="steps")
     progress_entries = db.relationship(
@@ -72,6 +75,7 @@ class CareerSteps(db.Model):
             "category": self.category,
             "required_solves": self.required_solves,
             "challenge_id": self.challenge_id,
+            "image_url": self.image_url,
         }
         if user_id is not None:
             progress = CareerUserProgress.query.filter_by(
@@ -230,3 +234,36 @@ def update_progress(user_id: int) -> Dict[str, Dict]:
     db.session.commit()
 
     return {"user": user_id, "careers": progress_snapshot}
+
+
+def ensure_columns_exist() -> None:
+    """Ensure optional columns exist for backward compatibility deployments."""
+
+    engine = db.engine
+    inspector = inspect(engine)
+
+    try:
+        columns = {column["name"] for column in inspector.get_columns("career_steps")}
+    except Exception as exc:  # pragma: no cover - defensive for exotic DBs
+        current_app.logger.warning(
+            "Unable to inspect career_steps table for migrations: %s", exc
+        )
+        return
+
+    statements = []
+
+    if "challenge_id" not in columns:
+        statements.append("ALTER TABLE career_steps ADD COLUMN challenge_id INTEGER")
+
+    if "image_url" not in columns:
+        statements.append("ALTER TABLE career_steps ADD COLUMN image_url VARCHAR(512)")
+
+    for statement in statements:
+        try:
+            db.session.execute(text(statement))
+            db.session.commit()
+        except Exception as exc:  # pragma: no cover - best effort
+            db.session.rollback()
+            current_app.logger.warning(
+                "Failed to apply automatic column migration for CareerSteps: %s", exc
+            )

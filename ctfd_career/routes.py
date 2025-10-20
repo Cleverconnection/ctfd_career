@@ -51,6 +51,21 @@ def register_routes(blueprint):
         translations = load_translations()
         return render_template("progress.html", translations=translations)
 
+    @blueprint.route("/<int:career_id>", methods=["GET"])
+    @authed_only
+    def career_detail(career_id: int):
+        career = Careers.query.get_or_404(career_id)
+        translations = load_translations()
+        user = get_current_user()
+        return render_template(
+            "career_detail.html",
+            translations=translations,
+            career=career.to_dict(
+                include_steps=True,
+                user_id=(user.id if user else None),
+            ),
+        )
+
     @blueprint.route("/admin", methods=["GET"])
     @admins_only
     def admin_dashboard():
@@ -140,6 +155,8 @@ def register_routes(blueprint):
         if required_solves is None:
             required_solves = 1
 
+        image_url = payload.get("image_url") or None
+
         step = CareerSteps(
             career_id=career.id,
             name=payload["name"],
@@ -147,6 +164,7 @@ def register_routes(blueprint):
             category=payload.get("category"),
             required_solves=required_solves,
             challenge_id=challenge_id,
+            image_url=image_url,
         )
 
         db.session.add(step)
@@ -181,6 +199,9 @@ def register_routes(blueprint):
 
         if "challenge_id" in payload:
             step.challenge_id = _optional_int(payload.get("challenge_id"))
+
+        if "image_url" in payload:
+            step.image_url = payload.get("image_url") or None
 
         try:
             db.session.commit()

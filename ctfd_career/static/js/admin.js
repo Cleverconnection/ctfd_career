@@ -197,6 +197,8 @@
       const formData = new FormData(stepForm);
       const payload = Object.fromEntries(formData.entries());
       payload.required_solves = Number(payload.required_solves || 1);
+      payload.challenge_id = payload.challenge_id ? Number(payload.challenge_id) : null;
+      payload.image_url = payload.image_url ? payload.image_url : null;
 
       try {
         await apiFetch("/plugins/career/api/v1/career/steps", {
