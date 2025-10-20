@@ -67,8 +67,10 @@
               <input type="text" id="step-category" name="category" class="form-control" placeholder="Web" />
             </div>
             <div>
-              <label class="form-label" for="step-challenge-id">{{ translations.get('Challenge ID', 'Challenge ID') }}</label>
-              <input type="number" min="0" id="step-challenge-id" name="challenge_id" class="form-control" placeholder="42" />
+              <label class="form-label" for="step-challenge-id">{{ translations.get('Select Challenge', 'Select Challenge') }}</label>
+              <select id="step-challenge-id" name="challenge_id" class="form-select">
+                <option value="">{{ translations.get('No Challenge', 'No Challenge') }}</option>
+              </select>
             </div>
             <div>
               <label class="form-label" for="step-required-solves">{{ translations.get('Required Solves', 'Required Solves') }}</label>

@@ -5,6 +5,8 @@
   const tableBody = document.querySelector("#career-steps-table tbody");
   const statusElement = document.getElementById("career-steps-status");
   let currentEditRow = null;
+  let challengeOptions = [];
+  const challengeMap = new Map();
 
   const apiBase = "/plugins/career/api/v1";
 
@@ -73,11 +75,44 @@
     return payload.data;
   }
 
+  async function loadChallenges(force = false) {
+    if (!force && challengeOptions.length) {
+      return challengeOptions;
+    }
+
+    try {
+      const data = await apiRequest(`/career/challenges`);
+      challengeOptions = Array.isArray(data) ? data : [];
+      challengeMap.clear();
+      challengeOptions.forEach((challenge) => {
+        challengeMap.set(challenge.id, challenge);
+      });
+      return challengeOptions;
+    } catch (error) {
+      displayMessage("danger", error.message || t("Unexpected error", "Unexpected error"));
+      throw error;
+    }
+  }
+
   function closeEditForm() {
     if (currentEditRow && currentEditRow.parentNode) {
       currentEditRow.parentNode.removeChild(currentEditRow);
     }
     currentEditRow = null;
+  }
+
+  function buildChallengeOptions(selectedId) {
+    const options = [`<option value="">${escapeHtml(t("No Challenge", "No Challenge"))}</option>`];
+    challengeOptions.forEach((challenge) => {
+      const selected =
+        selectedId !== null && selectedId !== undefined && challenge.id === selectedId
+          ? " selected"
+          : "";
+      options.push(
+        `<option value="${challenge.id}"${selected}>${escapeHtml(challenge.name)} (#${challenge.id})</option>`
+      );
+    });
+    return options.join("\n");
   }
 
   function openEditForm(step, career, anchorRow) {
@@ -99,13 +134,11 @@
         <label class="form-label">${t("Category", "Category")}</label>
         <input type="text" name="category" class="form-control" value="${escapeHtml(step.category)}" />
       </div>
-      <div class="col-md-2">
-        <label class="form-label">${t("Challenge", "Challenge")}</label>
-        <input type="number" name="challenge_id" class="form-control" value="${
-          step.challenge_id !== null && step.challenge_id !== undefined
-            ? escapeHtml(String(step.challenge_id))
-            : ""
-        }" min="0" />
+      <div class="col-md-3">
+        <label class="form-label">${t("Select Challenge", "Select Challenge")}</label>
+        <select name="challenge_id" class="form-select">
+          ${buildChallengeOptions(step.challenge_id)}
+        </select>
       </div>
       <div class="col-md-2">
         <label class="form-label">${t("Required Solves", "Required Solves")}</label>
@@ -258,16 +291,18 @@
         const imageCell = step.image_url
           ? `<a href="${escapeHtml(step.image_url)}" target="_blank" rel="noopener noreferrer">${t("View", "View")}</a>`
           : "";
+        const challengeLabel =
+          step.challenge_id !== null && step.challenge_id !== undefined
+            ? `${escapeHtml(
+                (challengeMap.get(step.challenge_id) || {}).name || String(step.challenge_id)
+              )} (#${escapeHtml(String(step.challenge_id))})`
+            : "";
 
         row.innerHTML = `
           <td>${escapeHtml(step.name)}</td>
           <td>${escapeHtml(career.name)}</td>
           <td>${escapeHtml(step.category)}</td>
-          <td>${
-            step.challenge_id !== null && step.challenge_id !== undefined
-              ? escapeHtml(String(step.challenge_id))
-              : ""
-          }</td>
+          <td>${challengeLabel}</td>
           <td>${escapeHtml(String(step.required_solves ?? 0))}</td>
           <td>${imageCell}</td>
           <td></td>
@@ -298,6 +333,9 @@
     displayMessage("info", t("Loading", "Loading"));
 
     try {
+      if (!challengeOptions.length) {
+        await loadChallenges();
+      }
       const careerPayload = await apiRequest(`/career`);
       const careers = (careerPayload && careerPayload.careers) || [];
 
@@ -316,8 +354,20 @@
   }
 
   document.addEventListener("DOMContentLoaded", () => {
-    if (tableBody) {
-      loadSteps();
+    if (!tableBody) {
+      return;
     }
+
+    (async () => {
+      try {
+        await loadChallenges();
+        await loadSteps();
+      } catch (error) {
+        // Error already surfaced via displayMessage in loaders
+        if (error instanceof Error && error.message) {
+          console.error(error);
+        }
+      }
+    })();
   });
 })();

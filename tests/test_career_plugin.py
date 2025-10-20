@@ -189,8 +189,17 @@ def test_admin_manage_steps_with_challenge(app, app_context, admin_user):
         type="standard",
         max_attempts=0,
     )
+    hidden_challenge = Challenges(
+        name="API Challenge Hidden",
+        description="Hidden API challenge",
+        category="Web",
+        value=125,
+        state="hidden",
+        type="standard",
+        max_attempts=0,
+    )
     career = Careers(name="API Career")
-    db.session.add_all([challenge_one, challenge_two, career])
+    db.session.add_all([challenge_one, challenge_two, hidden_challenge, career])
     db.session.commit()
 
     with app.test_client() as client:
@@ -199,6 +208,15 @@ def test_admin_manage_steps_with_challenge(app, app_context, admin_user):
             sess["type"] = "admin"
             sess["nonce"] = "test-nonce"
             sess["hash"] = ctfd_hmac(admin_user.password)
+
+        challenges_response = client.get("/plugins/career/api/v1/career/challenges")
+        assert challenges_response.status_code == 200
+        challenges_payload = challenges_response.get_json()
+        assert challenges_payload["success"] is True
+        challenge_ids = {entry["id"] for entry in challenges_payload["data"]}
+        assert challenge_one.id in challenge_ids
+        assert challenge_two.id in challenge_ids
+        assert hidden_challenge.id not in challenge_ids
 
         create_response = client.post(
             "/plugins/career/api/v1/career/steps",
@@ -303,9 +321,98 @@ def test_update_progress_requires_challenge_solve(app_context):
     assert step_entry_after["completed"] is True
 
 
+def test_challenge_detail_endpoint(app, app_context, admin_user):
+    player = Users(
+        name="career_user",
+        email="career_user@example.com",
+        password=hash_password("password"),
+    )
+    visible_challenge = Challenges(
+        name="Detail Challenge",
+        description="Solve me",
+        category="Misc",
+        value=25,
+        state="visible",
+        type="standard",
+        max_attempts=0,
+    )
+    hidden_challenge = Challenges(
+        name="Hidden Detail Challenge",
+        description="Secret",
+        category="Misc",
+        value=75,
+        state="hidden",
+        type="standard",
+        max_attempts=3,
+    )
+    db.session.add_all([player, visible_challenge, hidden_challenge])
+    db.session.commit()
+
+    with app.test_client() as client:
+        with client.session_transaction() as sess:
+            sess["id"] = player.id
+            sess["type"] = "user"
+            sess["nonce"] = "player-nonce"
+            sess["hash"] = ctfd_hmac(player.password)
+
+        visible_response = client.get(
+            f"/plugins/career/api/v1/career/challenges/{visible_challenge.id}"
+        )
+        assert visible_response.status_code == 200
+        visible_payload = visible_response.get_json()
+        assert visible_payload["success"] is True
+        visible_data = visible_payload["data"]
+        assert visible_data["id"] == visible_challenge.id
+        assert visible_data["name"] == "Detail Challenge"
+        assert visible_data["solved"] is False
+        assert "html" in visible_data
+
+        solve = Solves(
+            user_id=player.id,
+            team_id=None,
+            challenge_id=visible_challenge.id,
+            ip="127.0.0.1",
+            provided="FLAG{detail}",
+            type="correct",
+            date=datetime.datetime.utcnow(),
+        )
+        db.session.add(solve)
+        db.session.commit()
+
+        solved_response = client.get(
+            f"/plugins/career/api/v1/career/challenges/{visible_challenge.id}"
+        )
+        assert solved_response.status_code == 200
+        solved_data = solved_response.get_json()["data"]
+        assert solved_data["solved"] is True
+
+        hidden_response = client.get(
+            f"/plugins/career/api/v1/career/challenges/{hidden_challenge.id}"
+        )
+        assert hidden_response.status_code == 404
+
+        with client.session_transaction() as sess:
+            sess["id"] = admin_user.id
+            sess["type"] = "admin"
+            sess["nonce"] = "admin-nonce"
+            sess["hash"] = ctfd_hmac(admin_user.password)
+
+        admin_hidden_response = client.get(
+            f"/plugins/career/api/v1/career/challenges/{hidden_challenge.id}"
+        )
+        assert admin_hidden_response.status_code == 200
+        admin_hidden_payload = admin_hidden_response.get_json()
+        assert admin_hidden_payload["success"] is True
+        assert admin_hidden_payload["data"]["id"] == hidden_challenge.id
+
+
 def test_career_detail_page(app, app_context, admin_user):
+    challenge = Challenges(
+        name="Detail Challenge", description="Challenge body", category="Misc", value=10, state="visible", type="standard"
+    )
     career = Careers(name="Detail Career", description="<strong>Shiny path</strong>")
     db.session.add(career)
+    db.session.add(challenge)
     db.session.commit()
 
     step = CareerSteps(
@@ -314,6 +421,7 @@ def test_career_detail_page(app, app_context, admin_user):
         description="<em>Learn</em>",
         required_solves=0,
         image_url="https://example.com/detail.png",
+        challenge_id=challenge.id,
     )
     db.session.add(step)
     db.session.commit()
@@ -330,4 +438,6 @@ def test_career_detail_page(app, app_context, admin_user):
         body = response.get_data(as_text=True)
         assert "Detail Career" in body
         assert "Detail Step" in body
+        assert f'data-career-id="{career.id}"' in body
+        assert "data-action=\"open-challenge\"" in body
         assert "test-nonce" not in body  # ensure no nonce leakage

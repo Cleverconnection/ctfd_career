@@ -3,10 +3,10 @@ from __future__ import annotations
 from http import HTTPStatus
 from typing import Any, Dict, Optional
 
-from flask import jsonify, render_template, request
+from flask import abort, jsonify, render_template, request
 from werkzeug.exceptions import BadRequest
 
-from CTFd.models import db
+from CTFd.models import Challenges, Solves, db
 from CTFd.utils.decorators import admins_only, authed_only
 from CTFd.utils.user import get_current_user
 from sqlalchemy.exc import IntegrityError
@@ -133,6 +133,62 @@ def register_routes(blueprint):
         db.session.commit()
 
         return jsonify({"success": True, "data": {"deleted": career_id}})
+
+    @blueprint.route("/api/v1/career/challenges", methods=["GET"])
+    @admins_only
+    def list_available_challenges():
+        challenges = (
+            Challenges.query.filter(Challenges.state == "visible")
+            .order_by(Challenges.name.asc())
+            .all()
+        )
+        data = [
+            {
+                "id": challenge.id,
+                "name": challenge.name,
+                "category": challenge.category,
+                "value": challenge.value,
+            }
+            for challenge in challenges
+        ]
+        return jsonify({"success": True, "data": data})
+
+    @blueprint.route("/api/v1/career/challenges/<int:challenge_id>", methods=["GET"])
+    @authed_only
+    def get_challenge(challenge_id: int):
+        challenge = Challenges.query.get_or_404(challenge_id)
+        user = get_current_user()
+
+        if challenge.state != "visible" and (not user or getattr(user, "type", None) != "admin"):
+            abort(404)
+
+        solved = False
+        if user:
+            solved = (
+                Solves.query.filter_by(user_id=user.id, challenge_id=challenge.id).first()
+                is not None
+            )
+
+        meta = {
+            "id": challenge.id,
+            "name": challenge.name,
+            "description": challenge.description,
+            "value": challenge.value,
+            "category": challenge.category,
+            "type": challenge.type,
+            "max_attempts": challenge.max_attempts,
+            "state": challenge.state,
+            "solved": solved,
+        }
+
+        try:
+            rendered = render_template("challenges/challenge.html", challenge=challenge)
+        except Exception:  # pragma: no cover - fallback if template missing
+            rendered = None
+
+        meta["html"] = rendered
+
+        return jsonify({"success": True, "data": meta})
 
     @blueprint.route("/api/v1/career/steps/<int:career_id>", methods=["GET"])
     @authed_only

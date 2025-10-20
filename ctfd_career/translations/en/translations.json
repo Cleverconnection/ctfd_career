@@ -36,5 +36,21 @@
   "Back to Career Admin": "Back to Career Admin",
   "Save": "Save",
   "Cancel": "Cancel",
-  "Unexpected error": "Unexpected error"
+  "Unexpected error": "Unexpected error",
+  "Value": "Value",
+  "Select Challenge": "Select Challenge",
+  "No Challenge": "No Challenge",
+  "Open Challenge": "Open Challenge",
+  "Submit Flag": "Submit Flag",
+  "Close": "Close",
+  "Loading Challenge": "Loading Challenge",
+  "Enter flag": "Enter flag",
+  "Flag": "Flag",
+  "No description provided": "No description provided",
+  "Attempts Remaining": "Attempts Remaining",
+  "Unlimited": "Unlimited",
+  "Challenge already solved": "Challenge already solved",
+  "Challenge solved!": "Challenge solved!",
+  "Incorrect flag": "Incorrect flag",
+  "Submitting...": "Submitting..."
 }
