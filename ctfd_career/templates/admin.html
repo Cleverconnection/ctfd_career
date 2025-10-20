@@ -7,6 +7,9 @@
 
 {% block content %}
 <div class="container-fluid py-4">
+  <div class="d-flex justify-content-end mb-3">
+    <a class="btn btn-outline-primary" href="{{ url_for('career.admin_steps') }}">{{ translations.get('Edit Steps', 'Edit Steps') }}</a>
+  </div>
   <div class="row g-4">
     <div class="col-lg-4">
       <div class="card shadow-sm">
@@ -64,8 +67,18 @@
               <input type="text" id="step-category" name="category" class="form-control" placeholder="Web" />
             </div>
             <div>
+              <label class="form-label" for="step-challenge-id">{{ translations.get('Select Challenge', 'Select Challenge') }}</label>
+              <select id="step-challenge-id" name="challenge_id" class="form-select">
+                <option value="">{{ translations.get('Selecione um desafio...', 'Selecione um desafio...') }}</option>
+              </select>
+            </div>
+            <div>
               <label class="form-label" for="step-required-solves">{{ translations.get('Required Solves', 'Required Solves') }}</label>
               <input type="number" min="0" id="step-required-solves" name="required_solves" class="form-control" value="1" />
+            </div>
+            <div>
+              <label class="form-label" for="step-image-url">{{ translations.get('Image URL', 'Image URL') }}</label>
+              <input type="text" id="step-image-url" name="image_url" class="form-control" placeholder="/plugins/ctfd_career/static/img/steps/example.png" />
             </div>
             <div class="text-end">
               <button type="submit" class="btn btn-success">{{ translations.get('Add Step', 'Add Step') }}</button>
