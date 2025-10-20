@@ -51,3 +51,17 @@
 #career-root .career-card.career-theme-security {
   border-top-color: var(--career-color);
 }
+
+iframe {
+  border-radius: 0.5rem;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.15);
+}
+
+.card {
+  border: none;
+  transition: transform 0.2s;
+}
+
+.card:hover {
+  transform: translateY(-2px);
+}
