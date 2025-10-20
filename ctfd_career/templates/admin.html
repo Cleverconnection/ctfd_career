@@ -7,6 +7,9 @@
 
 {% block content %}
 <div class="container-fluid py-4">
+  <div class="d-flex justify-content-end mb-3">
+    <a class="btn btn-outline-primary" href="{{ url_for('career.admin_steps') }}">{{ translations.get('Edit Steps', 'Edit Steps') }}</a>
+  </div>
   <div class="row g-4">
     <div class="col-lg-4">
       <div class="card shadow-sm">
