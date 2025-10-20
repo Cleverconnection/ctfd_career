@@ -40,6 +40,9 @@
     </div>
 
     <div class="col-lg-8">
+      <div id="mensagem-erro-global" class="alert alert-danger d-none">
+        {{ translations.get('❌ Não foi possível carregar o desafio. Verifique sua conexão ou recarregue a página.', '❌ Não foi possível carregar o desafio. Verifique sua conexão ou recarregue a página.') }}
+      </div>
       <div id="mensagem-inicial" class="alert alert-info">
         {{ translations.get('Selecione um desafio à esquerda para resolvê-lo.', 'Selecione um desafio à esquerda para resolvê-lo.') }}
       </div>

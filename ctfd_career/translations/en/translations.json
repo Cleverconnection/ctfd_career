@@ -69,5 +69,6 @@
   "Challenge solved!": "Challenge solved!",
   "Incorrect flag": "Incorrect flag",
   "Submitting...": "Submitting...",
-  "Selecione um desafio à esquerda para resolvê-lo.": "Select a challenge on the left to solve it."
+  "Selecione um desafio à esquerda para resolvê-lo.": "Select a challenge on the left to solve it.",
+  "❌ Não foi possível carregar o desafio. Verifique sua conexão ou recarregue a página.": "❌ Unable to load the challenge. Check your connection or reload the page."
 }
