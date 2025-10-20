@@ -72,7 +72,7 @@
     if (challengeSelect && !challengeSelect.options.length) {
       const defaultOption = document.createElement("option");
       defaultOption.value = "";
-      defaultOption.textContent = t("No Challenge");
+      defaultOption.textContent = t("Selecione um desafio...");
       challengeSelect.appendChild(defaultOption);
     }
 
@@ -136,7 +136,7 @@
 
     const placeholder = document.createElement("option");
     placeholder.value = "";
-    placeholder.textContent = t("No Challenge");
+    placeholder.textContent = t("Selecione um desafio...");
     challengeSelect.appendChild(placeholder);
 
     challenges.forEach((challenge) => {

@@ -87,6 +87,11 @@
       challengeOptions.forEach((challenge) => {
         challengeMap.set(challenge.id, challenge);
       });
+      const inlineSelect = document.getElementById("challenge-select");
+      if (inlineSelect) {
+        const current = inlineSelect.value ? Number(inlineSelect.value) : null;
+        inlineSelect.innerHTML = buildChallengeOptions(current);
+      }
       return challengeOptions;
     } catch (error) {
       displayMessage("danger", error.message || t("Unexpected error", "Unexpected error"));
@@ -102,7 +107,11 @@
   }
 
   function buildChallengeOptions(selectedId) {
-    const options = [`<option value="">${escapeHtml(t("No Challenge", "No Challenge"))}</option>`];
+    const options = [
+      `<option value="">${escapeHtml(
+        t("Selecione um desafio...", "Selecione um desafio...")
+      )}</option>`,
+    ];
     challengeOptions.forEach((challenge) => {
       const selected =
         selectedId !== null && selectedId !== undefined && challenge.id === selectedId
@@ -135,8 +144,8 @@
         <input type="text" name="category" class="form-control" value="${escapeHtml(step.category)}" />
       </div>
       <div class="col-md-3">
-        <label class="form-label">${t("Select Challenge", "Select Challenge")}</label>
-        <select name="challenge_id" class="form-select">
+        <label class="form-label">${t("Desafio vinculado", "Desafio vinculado")}</label>
+        <select name="challenge_id" id="challenge-select" class="form-select">
           ${buildChallengeOptions(step.challenge_id)}
         </select>
       </div>

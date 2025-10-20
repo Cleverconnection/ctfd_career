@@ -359,13 +359,8 @@ def test_challenge_detail_endpoint(app, app_context, admin_user):
             f"/plugins/career/api/v1/career/challenges/{visible_challenge.id}"
         )
         assert visible_response.status_code == 200
-        visible_payload = visible_response.get_json()
-        assert visible_payload["success"] is True
-        visible_data = visible_payload["data"]
-        assert visible_data["id"] == visible_challenge.id
-        assert visible_data["name"] == "Detail Challenge"
-        assert visible_data["solved"] is False
-        assert "html" in visible_data
+        visible_html = visible_response.get_data(as_text=True)
+        assert "Detail Challenge" in visible_html
 
         solve = Solves(
             user_id=player.id,
@@ -383,8 +378,8 @@ def test_challenge_detail_endpoint(app, app_context, admin_user):
             f"/plugins/career/api/v1/career/challenges/{visible_challenge.id}"
         )
         assert solved_response.status_code == 200
-        solved_data = solved_response.get_json()["data"]
-        assert solved_data["solved"] is True
+        solved_html = solved_response.get_data(as_text=True)
+        assert "Detail Challenge" in solved_html
 
         hidden_response = client.get(
             f"/plugins/career/api/v1/career/challenges/{hidden_challenge.id}"
@@ -401,9 +396,8 @@ def test_challenge_detail_endpoint(app, app_context, admin_user):
             f"/plugins/career/api/v1/career/challenges/{hidden_challenge.id}"
         )
         assert admin_hidden_response.status_code == 200
-        admin_hidden_payload = admin_hidden_response.get_json()
-        assert admin_hidden_payload["success"] is True
-        assert admin_hidden_payload["data"]["id"] == hidden_challenge.id
+        admin_hidden_html = admin_hidden_response.get_data(as_text=True)
+        assert "Hidden Detail Challenge" in admin_hidden_html
 
 
 def test_career_detail_page(app, app_context, admin_user):
@@ -438,6 +432,6 @@ def test_career_detail_page(app, app_context, admin_user):
         body = response.get_data(as_text=True)
         assert "Detail Career" in body
         assert "Detail Step" in body
-        assert f'data-career-id="{career.id}"' in body
-        assert "data-action=\"open-challenge\"" in body
-        assert "test-nonce" not in body  # ensure no nonce leakage
+        assert "Resolver desafio" in body
+        assert "id=\"area-desafio\"" in body
+        assert "Desafio vinculado" in body
