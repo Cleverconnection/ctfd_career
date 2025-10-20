@@ -9,6 +9,7 @@
   const careerSelect = document.getElementById("step-career-id");
   const syncButton = document.getElementById("career-sync-button");
   const summaryContainer = document.getElementById("career-summary");
+  const challengeSelect = document.getElementById("step-challenge-id");
 
   // =======================
   // Funções utilitárias
@@ -68,6 +69,12 @@
   function renderCareers(careers) {
     careerList.innerHTML = "";
     careerSelect.innerHTML = "";
+    if (challengeSelect && !challengeSelect.options.length) {
+      const defaultOption = document.createElement("option");
+      defaultOption.value = "";
+      defaultOption.textContent = t("No Challenge");
+      challengeSelect.appendChild(defaultOption);
+    }
 
     if (!careers.length) {
       const placeholder = document.createElement("option");
@@ -118,6 +125,35 @@
     });
   }
 
+  function renderChallenges(challenges) {
+    if (!challengeSelect) {
+      return;
+    }
+
+    const currentValue = challengeSelect.value;
+
+    challengeSelect.innerHTML = "";
+
+    const placeholder = document.createElement("option");
+    placeholder.value = "";
+    placeholder.textContent = t("No Challenge");
+    challengeSelect.appendChild(placeholder);
+
+    challenges.forEach((challenge) => {
+      const option = document.createElement("option");
+      option.value = challenge.id;
+      option.textContent = `${challenge.name} (#${challenge.id})`;
+      if (String(challenge.id) === currentValue) {
+        option.selected = true;
+      }
+      challengeSelect.appendChild(option);
+    });
+
+    if (currentValue && !challengeSelect.value) {
+      challengeSelect.value = "";
+    }
+  }
+
   // =======================
   // Carregamento de dados
   // =======================
@@ -126,6 +162,20 @@
       const payload = await apiFetch("/plugins/career/api/v1/career");
       if (!payload.success) throw new Error(payload.message);
       renderCareers(payload.data.careers || []);
+    } catch (err) {
+      notify(err.message, "danger");
+    }
+  }
+
+  async function loadChallenges() {
+    if (!challengeSelect) {
+      return;
+    }
+
+    try {
+      const payload = await apiFetch("/plugins/career/api/v1/career/challenges");
+      if (!payload.success) throw new Error(payload.message);
+      renderChallenges(payload.data || []);
     } catch (err) {
       notify(err.message, "danger");
     }
@@ -197,6 +247,8 @@
       const formData = new FormData(stepForm);
       const payload = Object.fromEntries(formData.entries());
       payload.required_solves = Number(payload.required_solves || 1);
+      payload.challenge_id = payload.challenge_id ? Number(payload.challenge_id) : null;
+      payload.image_url = payload.image_url ? payload.image_url : null;
 
       try {
         await apiFetch("/plugins/career/api/v1/career/steps", {
@@ -205,6 +257,7 @@
         });
         stepForm.reset();
         await loadCareers();
+        await loadChallenges();
         await loadSummary();
         notify(t("Step created"));
       } catch (err) {
@@ -264,6 +317,7 @@
           });
           notify(t("Career deleted"));
           await loadCareers();
+          await loadChallenges();
           await loadSummary();
         } catch (err) {
           notify(err.message, "danger");
@@ -277,6 +331,7 @@
   // =======================
   document.addEventListener("DOMContentLoaded", () => {
     loadCareers();
+    loadChallenges();
     loadSummary();
   });
 })();

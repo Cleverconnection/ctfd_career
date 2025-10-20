@@ -1,0 +1,129 @@
+{% extends "page.html" %}
+
+{% block styles %}
+{{ super() }}
+<link rel="stylesheet" href="{{ url_for('career.static', filename='css/career.css') }}" />
+{% endblock %}
+
+{% block content %}
+<div class="container py-4" data-career-id="{{ career.id }}">
+  <div class="row mb-4 align-items-center">
+    <div class="col-md-8">
+      <h1 class="display-6 mb-2">{{ career.name }}</h1>
+      {% if career.description %}
+      <div class="text-muted">{{ career.description | safe }}</div>
+      {% endif %}
+    </div>
+    {% if career.icon %}
+    <div class="col-md-4 text-md-end mt-3 mt-md-0">
+      <img src="{{ career.icon }}" alt="{{ career.name }} icon" class="career-icon" />
+    </div>
+    {% endif %}
+  </div>
+
+  {% set total_steps = career.steps | length %}
+  {% set completed_steps = career.steps | selectattr('completed') | list | length %}
+  {% set percent = (completed_steps / total_steps * 100) | round(0, 'floor') if total_steps else 0 %}
+
+  <div class="mb-4" data-role="career-progress">
+    <div class="progress career-progress">
+      <div
+        id="career-progress-bar"
+        class="progress-bar"
+        role="progressbar"
+        style="width: {{ percent }}%;"
+        aria-valuenow="{{ percent }}"
+        aria-valuemin="0"
+        aria-valuemax="100"
+      >
+        {{ percent }}%
+      </div>
+    </div>
+    <div class="small text-muted mt-2" data-role="career-progress-summary">
+      {{ translations.get('Progress Summary', 'Progress Summary') }}:
+      <span data-role="career-progress-count">{{ completed_steps }}</span>/{{ total_steps }}
+    </div>
+  </div>
+
+  {% if not career.steps %}
+  <div class="alert alert-info">{{ translations.get('No steps available', 'No steps available') }}</div>
+  {% else %}
+  <div class="row g-4">
+    {% for step in career.steps %}
+    <div class="col-md-6">
+      <div class="card h-100 shadow-sm" data-step-id="{{ step.id }}" data-step-completed="{{ 'true' if step.completed else 'false' }}">
+        {% if step.image_url %}
+        <img src="{{ step.image_url }}" alt="{{ step.name }} illustration" class="card-img-top object-fit-cover" style="max-height: 180px;" />
+        {% endif %}
+        <div class="card-body d-flex flex-column">
+          <div class="d-flex justify-content-between align-items-start mb-2">
+            <h5 class="card-title mb-0">{{ step.name }}</h5>
+            <span class="badge {{ 'bg-success' if step.completed else 'bg-secondary' }}" data-step-badge>
+              {{ translations.get('Completed', 'Completed') if step.completed else translations.get('In Progress', 'In Progress') }}
+            </span>
+          </div>
+          {% if step.description %}
+          <p class="card-text">{{ step.description | safe }}</p>
+          {% endif %}
+          <ul class="list-unstyled text-muted small mt-auto">
+            {% if step.category %}
+            <li><strong>{{ translations.get('Category', 'Category') }}:</strong> {{ step.category }}</li>
+            {% endif %}
+            {% if step.challenge_id %}
+            <li><strong>{{ translations.get('Challenge ID', 'Challenge ID') }}:</strong> {{ step.challenge_id }}</li>
+            {% endif %}
+            {% if step.required_solves is not none %}
+            <li><strong>{{ translations.get('Required Solves', 'Required Solves') }}:</strong> {{ step.required_solves }}</li>
+            {% endif %}
+          </ul>
+          {% if step.challenge_id %}
+          <div class="mt-3 d-flex gap-2">
+            <button
+              type="button"
+              class="btn btn-primary"
+              data-action="open-challenge"
+              data-challenge-id="{{ step.challenge_id }}"
+            >
+              {{ translations.get('Open Challenge', 'Open Challenge') }}
+            </button>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+</div>
+<div class="modal fade" id="challengeModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">{{ translations.get('Challenge', 'Challenge') }}</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="{{ translations.get('Close', 'Close') }}"></button>
+      </div>
+      <div class="modal-body">
+        <div class="text-center py-5" data-role="challenge-loading">{{ translations.get('Loading Challenge', 'Loading Challenge') }}...</div>
+      </div>
+      <div class="modal-footer d-flex justify-content-between align-items-center">
+        <div class="me-auto small text-muted" data-role="challenge-meta"></div>
+        <div class="d-flex gap-2">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">{{ translations.get('Close', 'Close') }}</button>
+          <button type="button" class="btn btn-primary" data-action="submit-flag">{{ translations.get('Submit Flag', 'Submit Flag') }}</button>
+        </div>
+      </div>
+      <div class="px-3 pb-3 w-100">
+        <div class="alert d-none" role="alert" data-role="challenge-feedback"></div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script>
+  window.CTFDCareerTranslations = {{ translations | tojson | safe }};
+</script>
+<script src="{{ url_for('career.static', filename='js/career_detail.js') }}" defer></script>
+{% endblock %}
