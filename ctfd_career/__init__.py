@@ -15,6 +15,7 @@ except ImportError:  # pragma: no cover - compatibility shim
             register_admin_menu_bar = None
 
 from . import models, routes
+from .models import ensure_columns_exist
 
 
 def load(app):
@@ -28,6 +29,18 @@ def load(app):
             print("<<<<< CTFd Career Plugin: tabelas sincronizadas >>>>>", flush=True)
         except Exception as e:
             print(f"⚠️  Erro ao criar tabelas do Career Plugin: {e}", flush=True)
+
+        try:
+            ensure_columns_exist()
+            print(
+                "<<<<< CTFd Career Plugin: colunas opcionais verificadas >>>>>",
+                flush=True,
+            )
+        except Exception as exc:
+            print(
+                f"⚠️  Erro ao verificar colunas opcionais do Career Plugin: {exc}",
+                flush=True,
+            )
 
     # Blueprint e rotas
     blueprint = Blueprint(
