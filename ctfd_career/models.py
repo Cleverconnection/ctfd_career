@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 from collections import Counter
-from typing import Dict, Iterable, Optional
+from typing import Dict, Iterable, Optional, Set
 
 from flask import current_app
+
+from sqlalchemy import inspect, text
 
 from CTFd.models import Challenges, Solves, Users, db
 
@@ -53,6 +55,8 @@ class CareerSteps(db.Model):
     description = db.Column(db.Text, nullable=True)
     category = db.Column(db.String(128), nullable=True)
     required_solves = db.Column(db.Integer, nullable=False, default=1)
+    challenge_id = db.Column(db.Integer, db.ForeignKey("challenges.id"), nullable=True)
+    image_url = db.Column(db.String(512), nullable=True)
 
     career = db.relationship("Careers", back_populates="steps")
     progress_entries = db.relationship(
@@ -70,6 +74,8 @@ class CareerSteps(db.Model):
             "description": self.description,
             "category": self.category,
             "required_solves": self.required_solves,
+            "challenge_id": self.challenge_id,
+            "image_url": self.image_url,
         }
         if user_id is not None:
             progress = CareerUserProgress.query.filter_by(
@@ -129,7 +135,7 @@ def _load_module_map(module_ids: Iterable[int]) -> Dict[int, str]:
     return mapping
 
 
-def _collect_user_solves(user_id: int) -> Dict[str, Counter]:
+def _collect_user_solves(user_id: int) -> Dict[str, Counter | Set[int]]:
     columns = [Challenges.category]
     module_column = None
     if hasattr(Challenges, "module_id"):
@@ -146,9 +152,12 @@ def _collect_user_solves(user_id: int) -> Dict[str, Counter]:
     category_counter: Counter = Counter()
     module_counter: Counter = Counter()
     module_ids = set()
+    solved_challenges: Set[int] = set()
 
     for solve in results:
-        _, category, *module_values = solve
+        challenge_id, category, *module_values = solve
+        if challenge_id:
+            solved_challenges.add(challenge_id)
         if category:
             category_counter[category] += 1
         if module_column and module_values:
@@ -168,6 +177,7 @@ def _collect_user_solves(user_id: int) -> Dict[str, Counter]:
         "categories": category_counter,
         "modules": resolved_module_counter,
         "total": Counter({"total": len(results)}),
+        "challenges": solved_challenges,
     }
 
 
@@ -180,13 +190,16 @@ def update_progress(user_id: int) -> Dict[str, Dict]:
     solves = _collect_user_solves(user_id)
     category_counts = solves["categories"]
     module_counts = solves["modules"]
+    solved_challenges = solves.get("challenges", set())
 
     progress_snapshot = []
 
     for career in Careers.query.all():
         career_progress = {"career_id": career.id, "steps": []}
         for step in career.steps:
-            if step.category:
+            if step.challenge_id:
+                solved = 1 if step.challenge_id in solved_challenges else 0
+            elif step.category:
                 solved = max(
                     category_counts.get(step.category, 0),
                     module_counts.get(step.category, 0),
@@ -221,3 +234,36 @@ def update_progress(user_id: int) -> Dict[str, Dict]:
     db.session.commit()
 
     return {"user": user_id, "careers": progress_snapshot}
+
+
+def ensure_columns_exist() -> None:
+    """Ensure optional columns exist for backward compatibility deployments."""
+
+    engine = db.engine
+    inspector = inspect(engine)
+
+    try:
+        columns = {column["name"] for column in inspector.get_columns("career_steps")}
+    except Exception as exc:  # pragma: no cover - defensive for exotic DBs
+        current_app.logger.warning(
+            "Unable to inspect career_steps table for migrations: %s", exc
+        )
+        return
+
+    statements = []
+
+    if "challenge_id" not in columns:
+        statements.append("ALTER TABLE career_steps ADD COLUMN challenge_id INTEGER")
+
+    if "image_url" not in columns:
+        statements.append("ALTER TABLE career_steps ADD COLUMN image_url VARCHAR(512)")
+
+    for statement in statements:
+        try:
+            db.session.execute(text(statement))
+            db.session.commit()
+        except Exception as exc:  # pragma: no cover - best effort
+            db.session.rollback()
+            current_app.logger.warning(
+                "Failed to apply automatic column migration for CareerSteps: %s", exc
+            )
