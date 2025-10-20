@@ -8,6 +8,25 @@
     return div.innerHTML;
   }
 
+  function csrfToken() {
+    return (window.init && window.init.csrfNonce) || window.csrfNonce || "";
+  }
+
+  async function carregarScript(src) {
+    if (!src) return;
+    if (document.querySelector(`script[src='${src}']`)) {
+      return;
+    }
+
+    await new Promise((resolve, reject) => {
+      const script = document.createElement("script");
+      script.src = src;
+      script.onload = () => resolve();
+      script.onerror = () => reject(new Error(`Erro ao carregar script: ${src}`));
+      document.body.appendChild(script);
+    });
+  }
+
   window.carregarDesafio = async function (challengeId, stepName) {
     document
       .querySelectorAll("div[id^='challenge-area-']")
@@ -34,6 +53,35 @@
       const payload = await res.json();
       const ch = payload.data;
       if (!ch) throw new Error("Desafio não encontrado");
+
+      if (window.CTFd && CTFd._internal && CTFd._internal.challenge) {
+        CTFd._internal.challenge.data = ch;
+      }
+
+      if (ch.view) {
+        const viewResp = await fetch(ch.view, { credentials: "include" });
+        if (!viewResp.ok) throw new Error("Erro ao carregar template do desafio");
+        const html = await viewResp.text();
+        area.innerHTML = html;
+
+        let scriptPath = null;
+        if (ch.scripts && ch.scripts.view) {
+          scriptPath = ch.scripts.view;
+        } else if (ch.view.endsWith(".html")) {
+          scriptPath = ch.view.replace(/\.html$/, ".js");
+        }
+
+        try {
+          await carregarScript(scriptPath);
+        } catch (scriptErr) {
+          console.error(scriptErr);
+        }
+
+        if (CTFd._internal && CTFd._internal.challenge && CTFd._internal.challenge.postRender) {
+          CTFd._internal.challenge.postRender();
+        }
+        return;
+      }
 
       const description = ch.description || "";
       area.innerHTML = `
@@ -90,7 +138,10 @@
       const res = await fetch("/api/v1/challenges/attempt", {
         method: "POST",
         credentials: "include",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "CSRF-Token": csrfToken(),
+        },
         body: JSON.stringify({
           challenge_id: challengeId,
           submission: flag,
