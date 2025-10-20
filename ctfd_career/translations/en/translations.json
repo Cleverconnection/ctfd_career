@@ -16,5 +16,20 @@
   "Career created": "Career created",
   "Step created": "Step created",
   "Progress recalculated": "Progress recalculated",
-  "No careers available yet": "No careers available yet"
+  "No careers available yet": "No careers available yet",
+  "Edit Steps": "Edit Steps",
+  "Edit Step": "Edit Step",
+  "Delete Step": "Delete Step",
+  "Delete Step Confirmation": "Are you sure you want to delete this step?",
+  "Step updated": "Step updated",
+  "Step deleted": "Step deleted",
+  "Challenge": "Challenge",
+  "Actions": "Actions",
+  "No steps available": "No steps available",
+  "Loading": "Loading",
+  "Steps refreshed": "Steps refreshed",
+  "Back to Career Admin": "Back to Career Admin",
+  "Save": "Save",
+  "Cancel": "Cancel",
+  "Unexpected error": "Unexpected error"
 }
