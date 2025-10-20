@@ -57,6 +57,8 @@ def serialize_progress_for_user(user_id: int) -> Dict[str, List[Dict]]:
                     "description": step.description,
                     "category": step.category,
                     "required_solves": step.required_solves,
+                    "challenge_id": step.challenge_id,
+                    "image_url": step.image_url,
                     "completed": progress.completed if progress else False,
                 }
             )

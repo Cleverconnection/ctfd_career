@@ -22,6 +22,14 @@
       statusIcon.textContent = step.completed ? "✅" : "🔒";
       info.appendChild(statusIcon);
 
+      if (step.image_url) {
+        const preview = document.createElement("img");
+        preview.src = step.image_url;
+        preview.alt = `${step.name} illustration`;
+        preview.className = "career-step-image rounded";
+        info.appendChild(preview);
+      }
+
       const textWrapper = document.createElement("div");
       const title = document.createElement("div");
       title.className = "fw-semibold";
@@ -57,7 +65,7 @@
     }
 
     const header = document.createElement("div");
-    header.className = "card-header bg-white d-flex align-items-center gap-3";
+    header.className = "card-header bg-white d-flex align-items-center gap-3 position-relative";
 
     if (career.icon) {
       const icon = document.createElement("img");
@@ -70,7 +78,11 @@
     const headerText = document.createElement("div");
     const title = document.createElement("h5");
     title.className = "mb-0";
-    title.textContent = career.name;
+    const titleLink = document.createElement("a");
+    titleLink.href = `/plugins/career/${career.id}`;
+    titleLink.textContent = career.name;
+    titleLink.className = "stretched-link text-decoration-none";
+    title.appendChild(titleLink);
     headerText.appendChild(title);
 
     if (career.description) {
