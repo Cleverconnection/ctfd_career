@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from http import HTTPStatus
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 from flask import jsonify, render_template, request
 from werkzeug.exceptions import BadRequest
@@ -35,6 +35,15 @@ def _validate_required_fields(data: Dict[str, Any], *fields: str) -> None:
         raise APIError("Missing required fields: " + ", ".join(missing))
 
 
+def _optional_int(value: Any) -> Optional[int]:
+    if value in ("", None):
+        return None
+    try:
+        return int(value)
+    except (TypeError, ValueError) as exc:
+        raise APIError("Invalid integer value") from exc
+
+
 def register_routes(blueprint):
     @blueprint.route("/", methods=["GET"])
     @authed_only
@@ -42,11 +51,32 @@ def register_routes(blueprint):
         translations = load_translations()
         return render_template("progress.html", translations=translations)
 
+    @blueprint.route("/<int:career_id>", methods=["GET"])
+    @authed_only
+    def career_detail(career_id: int):
+        career = Careers.query.get_or_404(career_id)
+        translations = load_translations()
+        user = get_current_user()
+        return render_template(
+            "career_detail.html",
+            translations=translations,
+            career=career.to_dict(
+                include_steps=True,
+                user_id=(user.id if user else None),
+            ),
+        )
+
     @blueprint.route("/admin", methods=["GET"])
     @admins_only
     def admin_dashboard():
         translations = load_translations()
         return render_template("admin.html", translations=translations)
+
+    @blueprint.route("/admin/steps", methods=["GET"])
+    @admins_only
+    def admin_steps():
+        translations = load_translations()
+        return render_template("admin_steps.html", translations=translations)
 
     @blueprint.route("/api/v1/career", methods=["GET"])
     @authed_only
@@ -120,12 +150,21 @@ def register_routes(blueprint):
         _validate_required_fields(payload, "career_id", "name")
 
         career = Careers.query.get_or_404(payload["career_id"])
+        challenge_id = _optional_int(payload.get("challenge_id"))
+        required_solves = _optional_int(payload.get("required_solves", 1))
+        if required_solves is None:
+            required_solves = 1
+
+        image_url = payload.get("image_url") or None
+
         step = CareerSteps(
             career_id=career.id,
             name=payload["name"],
             description=payload.get("description"),
             category=payload.get("category"),
-            required_solves=int(payload.get("required_solves", 1)),
+            required_solves=required_solves,
+            challenge_id=challenge_id,
+            image_url=image_url,
         )
 
         db.session.add(step)
@@ -139,6 +178,47 @@ def register_routes(blueprint):
             jsonify({"success": True, "data": step.to_dict()}),
             HTTPStatus.CREATED,
         )
+
+    @blueprint.route("/api/v1/career/steps/<int:step_id>", methods=["PUT"])
+    @admins_only
+    def update_step(step_id: int):
+        payload = request.get_json() or {}
+        step = CareerSteps.query.get_or_404(step_id)
+
+        if "name" in payload:
+            step.name = payload["name"] or step.name
+        if "description" in payload:
+            step.description = payload["description"] or None
+        if "category" in payload:
+            step.category = payload["category"] or None
+
+        if "required_solves" in payload:
+            required_value = _optional_int(payload.get("required_solves"))
+            if required_value is not None:
+                step.required_solves = required_value
+
+        if "challenge_id" in payload:
+            step.challenge_id = _optional_int(payload.get("challenge_id"))
+
+        if "image_url" in payload:
+            step.image_url = payload.get("image_url") or None
+
+        try:
+            db.session.commit()
+        except IntegrityError as exc:
+            db.session.rollback()
+            raise APIError("Step already exists for this career") from exc
+
+        return jsonify({"success": True, "data": step.to_dict()})
+
+    @blueprint.route("/api/v1/career/steps/<int:step_id>", methods=["DELETE"])
+    @admins_only
+    def delete_step(step_id: int):
+        step = CareerSteps.query.get_or_404(step_id)
+        db.session.delete(step)
+        db.session.commit()
+
+        return jsonify({"success": True, "data": {"deleted": step_id}})
 
     @blueprint.route("/api/v1/career/progress", methods=["GET"])
     @authed_only
