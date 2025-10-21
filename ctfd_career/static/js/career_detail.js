@@ -3,10 +3,20 @@ function csrfToken() {
   return (window.init && window.init.csrfNonce) || window.csrfNonce || "";
 }
 
-async function carregarScript(src) {
+function isProbablyHTML(str) {
+  if (typeof str !== "string") return false;
+  const t = str.trim();
+  return t.startsWith("<") || t.includes("<div") || t.includes("<template");
+}
+
+function isURLish(str) {
+  return typeof str === "string" && !isProbablyHTML(str) && (/^\/|^https?:\/\//.test(str));
+}
+
+async function loadScript(src) {
   return new Promise((resolve, reject) => {
-    if (!src) return resolve();
-    if (document.querySelector(`script[src='${src}']`)) return resolve();
+    if (!src || !isURLish(src)) return resolve();
+    if (document.querySelector(`script[src="${src}"]`)) return resolve();
     const s = document.createElement("script");
     s.src = src;
     s.onload = () => resolve();
@@ -15,7 +25,7 @@ async function carregarScript(src) {
   });
 }
 
-function reexecutarScripts(rootEl) {
+function rerunInlineScripts(rootEl) {
   if (!rootEl) return;
   const scripts = rootEl.querySelectorAll("script");
   scripts.forEach((old) => {
@@ -27,10 +37,35 @@ function reexecutarScripts(rootEl) {
   });
 }
 
-function isProvavelmenteHTML(str) {
-  if (typeof str !== "string") return false;
-  const t = str.trim();
-  return t.startsWith("<") || t.includes("<div") || t.includes("<template");
+function resolveViewTemplate(ch) {
+  if (isURLish(ch.view)) return ch.view;
+  if (isURLish(ch?.type_data?.templates?.view)) return ch.type_data.templates.view;
+  switch (ch.type) {
+    case "choice":
+      return "/plugins/ctfd-plugin-choice-challenge/assets/view.html";
+    case "dynamic_iac":
+      return "/plugins/ctfd-chall-manager/assets/view.html";
+    case "container":
+      return "/plugins/containers/assets/view.html";
+    default:
+      return null;
+  }
+}
+
+function resolveViewScript(ch) {
+  if (isURLish(ch?.type_data?.scripts?.view)) return ch.type_data.scripts.view;
+  if (isURLish(ch?.scripts?.view)) return ch.scripts.view;
+  if (isURLish(ch.view) && ch.view.endsWith(".html")) return ch.view.replace(/\.html$/, ".js");
+  switch (ch.type) {
+    case "choice":
+      return "/plugins/ctfd-plugin-choice-challenge/assets/view.js";
+    case "dynamic_iac":
+      return "/plugins/ctfd-chall-manager/assets/view.js";
+    case "container":
+      return "/plugins/containers/assets/view.js";
+    default:
+      return null;
+  }
 }
 
 // === Função principal ===
@@ -48,6 +83,7 @@ async function carregarDesafio(challengeId, stepName) {
   if (!area) return;
 
   area.classList.remove("d-none");
+  area.setAttribute("x-ignore", "");
   area.innerHTML = `<div class="alert alert-info">Carregando desafio "<b>${stepName || ""}</b>"...</div>`;
 
   try {
@@ -63,75 +99,70 @@ async function carregarDesafio(challengeId, stepName) {
       CTFd._internal.challenge.data = ch;
     }
 
-    if (ch.view) {
-      let html;
-      if (isProvavelmenteHTML(ch.view)) {
-        html = ch.view;
-      } else {
-        const viewResp = await fetch(ch.view, { credentials: "include" });
-        if (!viewResp.ok) throw new Error("Erro ao carregar template do desafio");
-        html = await viewResp.text();
+    let html = "";
+    if (isProbablyHTML(ch.view)) {
+      html = ch.view;
+    } else {
+      const viewURL = resolveViewTemplate(ch);
+      if (!viewURL) {
+        throw new Error("View do desafio não encontrada");
       }
-
-      area.innerHTML = html;
-      reexecutarScripts(area);
-
-      let scriptPath = ch.scripts?.view ? ch.scripts.view : typeof ch.view === "string" ? ch.view.replace(/\.html$/, ".js") : null;
-      await carregarScript(scriptPath);
-
-      try {
-        if (window.CTFd?._internal?.challenge?.postRender) {
-          CTFd._internal.challenge.postRender();
-        } else if (window.challenge?.postRender) {
-          window.challenge.postRender();
-        }
-        if (window.Alpine?.initTree) {
-          window.Alpine.initTree(area);
-        }
-      } catch (e) {
-        console.warn("Aviso: pós-render falhou ou não existe:", e);
-      }
-      return;
+      const viewResp = await fetch(viewURL, { credentials: "include" });
+      if (!viewResp.ok) throw new Error(`Erro ao carregar template: ${viewURL}`);
+      html = await viewResp.text();
     }
 
-    area.innerHTML = `
-      <div class="card shadow-sm">
-        <div class="card-body">
-          <h5 class="card-title text-primary">${ch.name}</h5>
-          <div class="mb-3">${ch.description || ""}</div>
-          <div class="input-group">
-            <input id="flag-${ch.id}" class="form-control" placeholder="Digite a flag aqui">
-            <button class="btn btn-success" onclick="enviarFlag(${ch.id})">Enviar flag</button>
-          </div>
-          <div id="feedback-${ch.id}" class="mt-2"></div>
-        </div>
-      </div>
-    `;
+    area.innerHTML = html;
+    rerunInlineScripts(area);
+
+    const scriptURL = resolveViewScript(ch);
+    await loadScript(scriptURL);
+
+    try {
+      if (window.CTFd?._internal?.challenge?.postRender) {
+        CTFd._internal.challenge.postRender();
+      } else if (window.challenge?.postRender) {
+        window.challenge.postRender();
+      }
+      area.removeAttribute("x-ignore");
+      if (window.Alpine?.initTree) {
+        window.Alpine.initTree(area);
+      }
+    } catch (e) {
+      console.warn("Aviso: pós-render falhou ou não existe:", e);
+      area.removeAttribute("x-ignore");
+      if (window.Alpine?.initTree) window.Alpine.initTree(area);
+    }
+
+    if (localStorage.getItem("debugCareer") === "1") {
+      console.log("DEBUG career embed:", {
+        type: ch.type,
+        view_is_inline: isProbablyHTML(ch.view),
+        view_url: isProbablyHTML(ch.view) ? null : resolveViewTemplate(ch),
+        script_url: scriptURL,
+      });
+    }
   } catch (err) {
     console.error("Erro ao carregar desafio:", err);
     area.innerHTML = `<div class="alert alert-danger">❌ Falha ao carregar o desafio. Verifique o console.</div>`;
-    if (globalError) {
-      globalError.classList.remove("d-none");
-    }
+    area.removeAttribute("x-ignore");
+    const globalError = document.getElementById("mensagem-erro-global");
+    if (globalError) globalError.classList.remove("d-none");
   }
 }
 
-// === Submissão de flag ===
+// === Submissão de flag (fallback texto) ===
 async function enviarFlag(challengeId) {
   const flagInput = document.getElementById(`flag-${challengeId}`);
   const feedback = document.getElementById(`feedback-${challengeId}`);
-  const flag = flagInput ? flagInput.value.trim() : "";
-
-  if (!feedback) {
-    return;
-  }
+  const flag = flagInput?.value?.trim();
 
   if (!flag) {
-    feedback.innerHTML = "<div class='text-warning'>⚠️ Por favor, insira uma flag antes de enviar.</div>";
+    if (feedback) feedback.innerHTML = "<div class='text-warning'>⚠️ Por favor, insira uma flag antes de enviar.</div>";
     return;
   }
 
-  feedback.innerHTML = "<div class='text-info'>Enviando flag...</div>";
+  if (feedback) feedback.innerHTML = "<div class='text-info'>Enviando flag...</div>";
 
   try {
     const res = await fetch("/api/v1/challenges/attempt", {
@@ -141,22 +172,19 @@ async function enviarFlag(challengeId) {
         "Content-Type": "application/json",
         "CSRF-Token": csrfToken(),
       },
-      body: JSON.stringify({
-        challenge_id: challengeId,
-        submission: flag,
-      }),
+      body: JSON.stringify({ challenge_id: challengeId, submission: flag }),
     });
 
     const result = await res.json();
 
     if (result.success && result.data?.status === "correct") {
-      feedback.innerHTML = "<div class='alert alert-success mt-2'>✅ Flag correta! Parabéns!</div>";
+      if (feedback) feedback.innerHTML = `<div class='alert alert-success mt-2'>✅ Flag correta! Parabéns!</div>`;
     } else {
-      feedback.innerHTML = "<div class='alert alert-danger mt-2'>❌ Flag incorreta. Tente novamente.</div>";
+      if (feedback) feedback.innerHTML = `<div class='alert alert-danger mt-2'>❌ Flag incorreta. Tente novamente.</div>`;
     }
   } catch (err) {
     console.error(err);
-    feedback.innerHTML = "<div class='alert alert-danger mt-2'>Erro ao enviar flag.</div>";
+    if (feedback) feedback.innerHTML = `<div class='alert alert-danger mt-2'>Erro ao enviar flag.</div>`;
   }
 }
 
